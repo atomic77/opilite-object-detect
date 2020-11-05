@@ -1,0 +1,6 @@
+# Can download wheel from https://www.tensorflow.org/lite/guide/python
+# tflite_runtime
+
+# Alas, piwheels packages don't seem to work properly for this 
+# version of Armbian/Ubuntu, so make use of system-installed packages wherever
+# possible to avoid trying to compile things like numpy for armv7 from src
