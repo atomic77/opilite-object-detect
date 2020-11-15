@@ -1,0 +1,33 @@
+version: '3'
+
+services:
+  prometheus:
+          #user: '1000'
+    image: prom/prometheus:latest
+    #restart: always
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./targets.json:/etc/prometheus/targets.json
+      # - ./alert.rules.yml:/etc/prometheus/alert.rules.yml
+      # - ./prometheus:/etc/prometheus/vision
+      #- ${HOME}/data/prometheus:/prometheus
+      #command:
+      #- '--config.file=/etc/prometheus/vision/prometheus.yml'
+    ports:
+      - '19090:9090'
+  
+  grafana:
+    user: '1000'
+    image: grafana/grafana:latest
+    #restart: unless-stopped
+    #volumes:
+    #  - ${HOME}/data/grafana:/var/lib/grafana
+    ports: 
+      - '13030:3000'
+
+networks:
+    default:
+      ipam:
+        config:
+          - subnet: 10.6.9.0/28
+            #        ipam:

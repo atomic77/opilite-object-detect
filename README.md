@@ -1,7 +1,8 @@
 # Orange Pi Lite Object Detector 
 
-This is a little project I've been working on to get some hands on experience with some Orange Pi SBC devices I have, and Tensorflow. It can run 3-4 FPS object detection using ssd_mobilenet_v2 (confirm! Can't even remember where the original detect.tflite file came from). It keeps a count of all object types that have been encountered and the degree of confidence, and makes these available as a standard Prometheus `/metrics` endpoint that can be scraped for easy visualization in Grafana.
+This is a little project I've been working on to get some hands on experience with some Orange Pi SBC devices I have, and Tensorflow. It can run ~3 FPS object detection using ssd_mobilenet_v2 [1] without any external shipping of image data. It keeps a count of all object types that have been encountered and the degree of confidence, and makes these available as a standard Prometheus `/metrics` endpoint that can be scraped for easy visualization in Grafana:
 
+![Grafana Dashboard](img/grafana-dashboard.png)
 
 ## Hardware
 
@@ -14,7 +15,6 @@ Total cost of the hardware was a [very reasonable ~20USD](https://www.aliexpress
     * Wifi, Bluetooth and lots more
 
 * 2MP GC2035 camera (4 USD)
-
 
 ## OS Setup and Configuration
 
@@ -64,21 +64,27 @@ To make best use of the available CPU resources, the app can be run with a confi
 
 ### Front-end Application
 
-Nothing special here, just a simple Flask application with a template and a `/metrics` endpoint for Prometheus.
-
-The app makes extensive use of the python `multiprocessing` module to make best use of the quad-core CPU. On start up there is:
+The object detection process is managed by a simple Flask application with a template and a `/metrics` endpoint for Prometheus metrics extraction. The app makes extensive use of the python `multiprocessing` module to make best use of the quad-core CPU. On start up there is:
 
 * Main flask process
 * A process to manage the gstreamer pipeline
 * Variable number of tensorflow workers (processes)
 
-### Dashboard
+On the main page you can get the latest frame that was analyzed, and a link to a live video stream and the detailed prometheus metrics.
 
-Grafana was used for the dashboard to visualize the data output by the app:
+![Main page](img/site-dashboard.jpg)
 
+
+### Grafana and Prometheus
+
+There is a `docker-compose.yml` file for spinning up a Grafana and Prometheus service (preferably on another machine, though I suppose the pilite could run these itself). 
 
 ## TODO 
 
 * Gracefully handle/restart on the periodic camera lockups that seem to happen
 * Create a script for rebuilding image or at least document packages required for install
+* Connect prometheus to alertmanager for alerts on specific conditions (eg. High Confidence of "Raccoon" for > 5m!)
 * Make code less embarassing
+
+
+[1] Need to confirm! Can't even remember where the original detect.tflite file came from
