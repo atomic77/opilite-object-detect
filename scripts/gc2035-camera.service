@@ -1,0 +1,9 @@
+[Unit]
+Description=GC2035 Camera Load
+
+[Service]
+Type=oneshot
+ExecStart=/home/atomic/opilite-object-detect/scripts/camera_load.sh
+
+[Install]
+WantedBy=multi-user.target

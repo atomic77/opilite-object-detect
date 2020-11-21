@@ -1,0 +1,11 @@
+[Unit]
+Description=oplite object detect
+After=gc2035-camera.service
+
+[Service]
+WorkingDirectory=/home/atomic/opilite-object-detect
+# For unattended surveillance mode, use more workers at less FPS to allow for a lower max CPU
+ExecStart=/usr/bin/python3 app.py --workers 4 --target-fps 0.5
+
+[Install]
+WantedBy=multi-user.target

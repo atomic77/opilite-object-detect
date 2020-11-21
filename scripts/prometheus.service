@@ -1,0 +1,10 @@
+[Unit]
+Description=Prometheus
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/prometheus --config.file=/etc/prometheus.yml
+#    --storage.tsdb.path=/var/lib/prometheus
+
+[Install]
+WantedBy=multi-user.target
