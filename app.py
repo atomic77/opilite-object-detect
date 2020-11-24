@@ -22,6 +22,7 @@ import pickle
 from PIL import Image
 import cv2
 import datetime
+import logging
 
 # For metrics exposition
 from prometheus_client import start_http_server, Summary, Counter, Gauge, make_wsgi_app
@@ -79,7 +80,7 @@ def on_buffer(sink: GstApp.AppSink, data: typing.Any) -> Gst.FlowReturn:
     gen_fps.value = cam_seq.value / elapsed
 
     if not isinstance(sample, Gst.Sample):
-        print("Sample retrieved was corrupted")
+        logging.error("Sample retrieved was corrupted")
         return Gst.FlowReturn.ERROR
 
     cam_seq.value += 1
@@ -91,7 +92,7 @@ def on_buffer(sink: GstApp.AppSink, data: typing.Any) -> Gst.FlowReturn:
     vid_seq.value += 1
     prom_vid_images_processed.inc()
     img_arr = extract_buffer(sample)
-    print("Pushing image sample size: {}, incr: {}, q_sz: {}, est. fps: {:.1f}".format(
+    logging.debug("Pushing image sample size: {}, incr: {}, q_sz: {}, est. fps: {:.1f}".format(
         img_arr.shape, cam_seq.value, img_q.qsize(), gen_fps.value
     ))
     img_q.put((vid_seq.value, img_arr))
@@ -187,7 +188,7 @@ def convert_yuv_to_rgb(img_arr):
 def shm_pic():
     s = tf_seq.value - 1
     seq, img = shr_tf_img[s % IMG_BUF_LEN]
-    print("Cur tf_seq: {}, seq {} from final image buffer".format(s, seq))
+    logging.debug("Cur tf_seq: {}, seq {} from final image buffer".format(s, seq))
     img_io = io.BytesIO()
     img.save(img_io, 'JPEG', quality=85)
     img_io.seek(0)
@@ -197,12 +198,11 @@ def shm_pic():
 def bus_call(bus, message, loop):
     t = message.type
     if t == Gst.MessageType.EOS:
-        sys.stdout.write("End-of-stream\n")
+        logging.info("End-of-stream\n")
         loop.quit()
     elif t == Gst.MessageType.ERROR:
         err, debug = message.parse_error()
-        sys.stderr.write("Error in stream processing: %s: %s\n" % (err, debug))
-        print("Trying to restart event loop")
+        logging.error("Trying to restart event loop", err, debug)
         time.sleep(1)
         loop.run()
         
@@ -219,19 +219,21 @@ def pil_image_to_base64(pil_image):
 
 
 def frame_gen_shm():
-    """Video streaming generator function based on frames in shared memory"""
+    """Video streaming generator function based on frames in shared memory. It seems like
+a limitation in Flask prevents this from running in more than one thread; will need to look
+at something like Flask-SocketIO to get parallel video streams to work"""
 
     def calc_sleep():
         return 1 / shr_args.target_fps
 
-    app.logger.info("Generating frames from shared memory! shr_args: {}".format(shr_args))
+    logging.info("Generating frames from shared memory! shr_args: {}".format(shr_args))
     while True:
         seq = (tf_seq.value - 1) % IMG_BUF_LEN
         img_seq, img = shr_tf_img[seq]
         frame = pil_image_to_base64(img)
 
         s = calc_sleep()
-        print("Cur tf_seq {}, calc'd seq {}, got seq from tf {}, sleep time {} ".format(tf_seq.value, seq, img_seq, s))
+        logging.info("Cur tf_seq {}, calc'd seq {}, got seq from tf {}, sleep time {} ".format(tf_seq.value, seq, img_seq, s))
         time.sleep(s)
 
         yield (b'--frame\r\n'
@@ -247,7 +249,7 @@ def video_feed():
 def mymetrics():
     """ Collect metrics manually rather than try to get DispatcherMiddleware to work """ 
     _update_metric_counters()
-    print(prom_objects_seen.collect())
+    logging.debug(prom_objects_seen.collect())
     return flask.Response(generate_latest(), mimetype='text/plain')
 
 ######## 
@@ -260,7 +262,7 @@ def worker():
             results = detect_tflite.obj_detect_from_pil(img, shr_args.threshold, shr_args.classes)
             detect_tflite.draw_boxes(img, results)
         targ_seq = seq % IMG_BUF_LEN
-        print("Processed img seq {} from queue, putting in pos {} , prev tf_seq {}".format(seq, targ_seq, tf_seq.value))
+        logging.debug("Processed img seq {} from queue, putting in pos {} , prev tf_seq {}".format(seq, targ_seq, tf_seq.value))
         tf_seq.value = seq
         shr_tf_img[targ_seq] = (seq, img)
         shr_tf_res[targ_seq] = results
@@ -314,9 +316,11 @@ if __name__ == '__main__':
     parser.add_argument('--classes', nargs='+', type=int, default=None, help='List of object classes to show')
     parser.add_argument('--threshold', type=float, default=0.5, help='Probability threshold')
     parser.add_argument('--workers', type=int, default=1, help='Number of TF workers to spawn')
+    parser.add_argument('--log-level', default='info', help='Logging debug level')
 
     shr_args = parser.parse_args()
-    print("Shared args: {}".format(shr_args))
+    logging.basicConfig(level=shr_args.log_level.upper(), format='%(asctime)s [%(name)s] %(filename)s:%(lineno)s %(levelname)s: %(message)s')
+    logging.debug("Shared args: {}".format(shr_args))
 
     with app.app_context():
         print("Attempting to run gstreamer in a separate Process...")
