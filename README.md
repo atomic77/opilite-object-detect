@@ -4,6 +4,10 @@ This is a little project I've been working on to get some hands on experience wi
 
 ![Grafana Dashboard](img/grafana-dashboard.png)
 
+Overview video on Youtube:
+
+[![Youtube link](https://img.youtube.com/vi/YcUj7Yj_y2Y/0.jpg)](https://youtu.be/YcUj7Yj_y2Y)
+
 ## Hardware
 
 Total cost of the hardware was a [very reasonable ~20USD](https://www.aliexpress.com/item/Orange-Pi-Lite-SET9-Orange-Pi-Lite-512MB-and-2Million-Pixel-Camera-with-wide-angle-lens/32663940765.html), though depending on where you are shipping may affect this. 
